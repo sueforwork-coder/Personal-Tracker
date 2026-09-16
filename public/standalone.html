@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeSync Tracker - Standalone Personal Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FullCalendar CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <!-- Google Identity Services (GIS) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen antialiased flex flex-col">
+
+  <!-- TOP HEADER -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-md font-bold text-lg">
+            ⚡
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">LifeSync</h1>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Dashboard
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">Google Sheet Bi-directional Tracker</p>
+          </div>
+        </div>
+
+        <button onclick="openSetupModal()" class="sm:hidden p-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+          ⚙️ Settings
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+        <!-- Target Management: Max Daily Calories -->
+        <div class="flex items-center bg-slate-100 rounded-xl px-3 py-1.5 border border-slate-200 text-xs">
+          <span class="text-slate-600 font-medium mr-2">Daily Calorie Cap:</span>
+          <input type="number" id="headerMaxCalories" min="500" max="10000" step="50" value="2000"
+                 onchange="updateMaxCalories(this.value)"
+                 class="w-18 px-1.5 py-0.5 text-center font-bold text-slate-800 bg-white border border-slate-200 rounded-md">
+          <span class="ml-1 text-slate-500 font-semibold">kcal</span>
+        </div>
+
+        <!-- Google Sheet Link -->
+        <a id="sheetDirectLink" href="#" target="_blank"
+           class="hidden inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition">
+          <span>Open Sheet</span>
+          <span>↗</span>
+        </a>
+
+        <!-- Sync Button -->
+        <button onclick="syncData()" id="syncButton"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition">
+          <span id="syncIcon">🔄</span>
+          <span id="syncText">Sync Sheet</span>
+        </button>
+
+        <!-- Setup / Connection Modal Button -->
+        <button onclick="openSetupModal()"
+                class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition">
+          ⚙️ Connection
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- KPI SUMMARY CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      
+      <!-- 1. Net Cash Flow -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Financial Balance</span>
+              <h3 class="text-sm font-semibold text-slate-700 mt-0.5">Net Cash Flow</h3>
+            </div>
+            <!-- Period Selector -->
+            <div class="inline-flex p-0.5 rounded-xl bg-slate-100 border border-slate-200/70 text-xs self-start sm:self-auto">
+              <button type="button" onclick="setCashFlowPeriod('all')" id="btnPeriodAll" class="px-2.5 py-1 rounded-lg font-bold bg-white text-slate-900 shadow-2xs">
+                All Time
+              </button>
+              <button type="button" onclick="setCashFlowPeriod('monthly')" id="btnPeriodMonthly" class="px-2.5 py-1 rounded-lg font-medium text-slate-500 hover:text-slate-800">
+                Monthly
+              </button>
+              <button type="button" onclick="setCashFlowPeriod('daily')" id="btnPeriodDaily" class="px-2.5 py-1 rounded-lg font-medium text-slate-500 hover:text-slate-800">
+                Daily
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-baseline justify-between">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span id="kpiNetCashFlow" class="text-3xl sm:text-4xl font-extrabold font-mono text-emerald-600">+$0.00</span>
+              <span id="kpiCashFlowPeriodLabel" class="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">All-time</span>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold shrink-0">
+              💵
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <span id="kpiIncomeLabel" class="text-slate-400 text-[11px] block">Total Income</span>
+            <span id="kpiTotalIncome" class="font-bold text-slate-800 font-mono">+$0.00</span>
+          </div>
+          <div>
+            <span id="kpiExpenseLabel" class="text-slate-400 text-[11px] block">Total Expenses</span>
+            <span id="kpiTotalExpenses" class="font-bold text-slate-800 font-mono">-$0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Net Calories Today -->
+      <div id="calorieKpiCard" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs transition flex flex-col justify-between">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Daily Balance</span>
+                <span id="kpiOverCalorieBadge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 animate-pulse">
+                  ⚠️ Over Cap
+                </span>
+              </div>
+              <h3 class="text-sm font-semibold text-slate-700 mt-0.5">Net Calories Today</h3>
+            </div>
+
+            <!-- Target Calories Input -->
+            <div class="flex items-center gap-1.5 self-start sm:self-auto bg-slate-50 border border-slate-200/80 rounded-xl p-1 shadow-2xs">
+              <span class="text-[11px] font-bold text-slate-700 px-1.5">Target:</span>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="adjustTargetCalories(-100)" class="w-5 h-5 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-xs">
+                  -
+                </button>
+                <input
+                  id="kpiTargetCalorieInput"
+                  type="number"
+                  min="500"
+                  max="10000"
+                  step="50"
+                  value="2000"
+                  onchange="updateTargetCalories(this.value)"
+                  class="w-16 px-1 py-0.5 text-xs font-bold font-mono text-center bg-white border border-slate-200 rounded-lg text-slate-900"
+                />
+                <button type="button" onclick="adjustTargetCalories(100)" class="w-5 h-5 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center font-bold text-xs">
+                  +
+                </button>
+                <span class="text-[10px] text-slate-400 font-semibold pr-1">kcal</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-baseline justify-between">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span id="kpiNetCaloriesToday" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900">0</span>
+              <span id="kpiMaxCalorieTarget" class="text-xs font-semibold text-slate-500">/ 2,000 kcal</span>
+              <span id="kpiCaloriePercentBadge" class="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700">0%</span>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+              🔥
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div id="kpiCalorieBar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <span class="text-slate-400 text-[11px] block">Food Intake</span>
+            <span id="kpiTodayFood" class="font-bold text-orange-600 font-mono">+0 kcal</span>
+          </div>
+          <div>
+            <span class="text-slate-400 text-[11px] block">Exercise Burn</span>
+            <span id="kpiTodayExercise" class="font-bold text-blue-600 font-mono">-0 kcal</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TRACKING FORMS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Income & Expense Form -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-800">Track Finances</h2>
+            <p class="text-xs text-slate-500">Log income or expense</p>
+          </div>
+          <div class="inline-flex p-0.5 rounded-xl bg-slate-100 text-xs">
+            <button type="button" onclick="setIncomeType('Expense')" id="btnIncomeTypeExpense" class="px-2.5 py-1 rounded-lg font-bold bg-white text-rose-700 shadow-2xs">
+              Expense
+            </button>
+            <button type="button" onclick="setIncomeType('Income')" id="btnIncomeTypeIncome" class="px-2.5 py-1 rounded-lg font-medium text-slate-600">
+              Income
+            </button>
+          </div>
+        </div>
+
+        <form id="incomeForm" onsubmit="submitIncome(event)" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="incomeDate">Date</label>
+              <input type="date" id="incomeDate" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="incomeCategory">Category</label>
+              <select id="incomeCategory" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="incomeAmount">Amount ($)</label>
+              <input type="number" id="incomeAmount" step="0.01" min="0.01" required placeholder="0.00" class="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="incomeNote">Note</label>
+              <input type="text" id="incomeNote" placeholder="e.g., Grocery run" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+          </div>
+
+          <button type="submit" id="incomeSubmitBtn" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition">
+            Record Expense
+          </button>
+        </form>
+      </div>
+
+      <!-- Calories & Exercise Form -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-800">Track Calories & Exercise</h2>
+            <p class="text-xs text-slate-500">Log food intake or workout burn</p>
+          </div>
+          <div class="inline-flex p-0.5 rounded-xl bg-slate-100 text-xs">
+            <button type="button" onclick="setCalorieType('Food consumed')" id="btnCalTypeFood" class="px-2.5 py-1 rounded-lg font-bold bg-white text-amber-700 shadow-2xs">
+              Food
+            </button>
+            <button type="button" onclick="setCalorieType('Exercise')" id="btnCalTypeExer" class="px-2.5 py-1 rounded-lg font-medium text-slate-600">
+              Exercise
+            </button>
+          </div>
+        </div>
+
+        <form id="calorieForm" onsubmit="submitCalories(event)" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="calDate">Date</label>
+              <input type="date" id="calDate" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="calCategory">Category</label>
+              <select id="calCategory" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"></select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="calKcal">Calories (kcal)</label>
+              <input type="number" id="calKcal" step="1" min="1" required placeholder="e.g., 500" class="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="calNote">Description / Note</label>
+              <input type="text" id="calNote" placeholder="e.g., Chicken breast with rice" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+          </div>
+
+          <button type="submit" id="calorieSubmitBtn" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition">
+            Log Intake (+kcal)
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Financial Overview Table (4 Rows: Month, Monthly Income, Monthly Expense, Net Cash) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between h-96">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Financial Overview</h3>
+            <p class="text-[11px] text-slate-400">Monthly Cash Flow Breakdown</p>
+          </div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+            4-Row Summary
+          </span>
+        </div>
+        <div class="relative flex-1 min-h-0 overflow-auto rounded-xl border border-slate-100 bg-slate-50/50 p-1" id="financialTableContainer">
+          <!-- Populated by renderFinancialTable() -->
+        </div>
+        <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Format: <strong>26 Sept</strong> (YY Month)</span>
+          <span>Last 4 Months</span>
+        </div>
+      </div>
+
+      <!-- Calorie Line Graph -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col h-96">
+        <h3 class="text-sm font-bold text-slate-800">Calorie Line Graph</h3>
+        <p class="text-[11px] text-slate-400 mb-2">Daily Net Calorie Balances (Food Kcal minus Exercise Kcal)</p>
+        <div class="relative flex-1 min-h-0">
+          <canvas id="calorieChartCanvas"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- THRESHOLD ALERT CALENDAR -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Threshold Alert Calendar</h3>
+          <p class="text-xs text-slate-500">Days exceeding daily maximum cap highlighted in soft red (<span class="bg-red-100 text-rose-900 px-1 py-0.5 rounded font-mono text-[11px]">bg-red-100</span>) with ⚠️</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="calPrevMonth()" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200">&lt; Prev</button>
+          <span id="calendarMonthTitle" class="text-xs font-bold text-slate-800 min-w-[120px] text-center">Month Year</span>
+          <button onclick="calNextMonth()" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200">Next &gt;</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1.5 mb-1.5 text-center text-[11px] font-bold text-slate-400 uppercase">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+      <div id="calendarGrid" class="grid grid-cols-7 gap-1.5"></div>
+    </div>
+
+  </main>
+
+  <!-- ONBOARDING & SETUP MODAL -->
+  <div id="setupModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Connect Google Sheet API</h2>
+          <p class="text-xs text-slate-500">Set your Google Apps Script Web App URL</p>
+        </div>
+        <button onclick="closeSetupModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+      </div>
+
+      <div id="modalNotice" class="hidden p-3 rounded-xl text-xs"></div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Apps Script Web App URL</label>
+        <input type="url" id="modalScriptUrl" placeholder="https://script.google.com/macros/s/.../exec"
+               class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Google OAuth2 Client ID (Web)</label>
+        <input type="text" id="modalClientId" placeholder="123456789-abcdef.apps.googleusercontent.com"
+               class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono">
+      </div>
+
+      <button onclick="connectGoogleAccount()" id="btnModalConnectGoogle"
+              class="w-full py-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition">
+        🚀 Connect Google Account & Create Sheet
+      </button>
+
+      <div class="pt-3 border-t border-slate-100">
+        <label class="block text-xs font-bold text-slate-700 mb-1">Or Enter Existing Spreadsheet ID directly:</label>
+        <div class="flex gap-2">
+          <input type="text" id="modalSheetId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                 class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono">
+          <button onclick="saveManualSheetId()" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC SCRIPT -->
+  <script>
+    // State management
+    const state = {
+      scriptUrl: localStorage.getItem('lifesync_script_url') || '',
+      sheetId: localStorage.getItem('lifesync_sheet_id') || '',
+      clientId: localStorage.getItem('lifesync_client_id') || '',
+      maxDailyCalories: parseInt(localStorage.getItem('lifesync_max_cal') || '2000', 10),
+      currentIncomeType: 'Expense',
+      currentCalorieType: 'Food consumed',
+      categories: {
+        income: ['Salary', 'Freelance', 'Investments', 'Bonus', 'Other Income'],
+        expense: ['Food & Dining', 'Rent & Housing', 'Utilities & Bills', 'Groceries', 'Transport', 'Shopping', 'Other Expense'],
+        food: ['Breakfast', 'Lunch', 'Dinner', 'Morning Snack', 'Afternoon Snack', 'Drinks & Smoothies'],
+        exercise: ['Running', 'Gym & Weights', 'Walking', 'Cycling', 'Swimming', 'HIIT / Cardio']
+      },
+      incomeLogs: JSON.parse(localStorage.getItem('lifesync_income_logs') || '[]'),
+      calorieLogs: JSON.parse(localStorage.getItem('lifesync_calorie_logs') || '[]'),
+      calendarDate: new Date(),
+      cashFlowPeriod: 'all',
+    };
+
+    let financialChartInstance = null;
+    let calorieChartInstance = null;
+
+    // Initialize application on load
+    window.addEventListener('DOMContentLoaded', () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('incomeDate').value = todayStr;
+      document.getElementById('calDate').value = todayStr;
+      document.getElementById('headerMaxCalories').value = state.maxDailyCalories;
+
+      updateCategoryDropdowns();
+      renderKPIs();
+      initFinancialChart();
+      initCalorieChart();
+      renderCalendar();
+      updateSheetLink();
+
+      // Show setup modal if no valid URL or Sheet ID
+      if (!state.scriptUrl || !state.sheetId) {
+        openSetupModal();
+      } else {
+        syncData();
+      }
+    });
+
+    function updateMaxCalories(val) {
+      const num = parseInt(val, 10) || 2000;
+      state.maxDailyCalories = num;
+      localStorage.setItem('lifesync_max_cal', String(num));
+      renderKPIs();
+      initCalorieChart();
+      renderCalendar();
+    }
+
+    function updateSheetLink() {
+      const link = document.getElementById('sheetDirectLink');
+      if (state.sheetId) {
+        link.href = `https://docs.google.com/spreadsheets/d/${state.sheetId}/edit`;
+        link.classList.remove('hidden');
+      } else {
+        link.classList.add('hidden');
+      }
+    }
+
+    function setIncomeType(type) {
+      state.currentIncomeType = type;
+      const btnExp = document.getElementById('btnIncomeTypeExpense');
+      const btnInc = document.getElementById('btnIncomeTypeIncome');
+      const submitBtn = document.getElementById('incomeSubmitBtn');
+
+      if (type === 'Expense') {
+        btnExp.className = 'px-2.5 py-1 rounded-lg font-bold bg-white text-rose-700 shadow-2xs';
+        btnInc.className = 'px-2.5 py-1 rounded-lg font-medium text-slate-600';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition';
+        submitBtn.innerText = 'Record Expense';
+      } else {
+        btnInc.className = 'px-2.5 py-1 rounded-lg font-bold bg-white text-emerald-700 shadow-2xs';
+        btnExp.className = 'px-2.5 py-1 rounded-lg font-medium text-slate-600';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition';
+        submitBtn.innerText = 'Record Income';
+      }
+      updateCategoryDropdowns();
+    }
+
+    function setCalorieType(type) {
+      state.currentCalorieType = type;
+      const btnFood = document.getElementById('btnCalTypeFood');
+      const btnExer = document.getElementById('btnCalTypeExer');
+      const submitBtn = document.getElementById('calorieSubmitBtn');
+
+      if (type === 'Food consumed') {
+        btnFood.className = 'px-2.5 py-1 rounded-lg font-bold bg-white text-amber-700 shadow-2xs';
+        btnExer.className = 'px-2.5 py-1 rounded-lg font-medium text-slate-600';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition';
+        submitBtn.innerText = 'Log Intake (+kcal)';
+      } else {
+        btnExer.className = 'px-2.5 py-1 rounded-lg font-bold bg-white text-blue-700 shadow-2xs';
+        btnFood.className = 'px-2.5 py-1 rounded-lg font-medium text-slate-600';
+        submitBtn.className = 'w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition';
+        submitBtn.innerText = 'Log Burn (-kcal)';
+      }
+      updateCategoryDropdowns();
+    }
+
+    function updateCategoryDropdowns() {
+      // Income / Expense category rewrite
+      const incSelect = document.getElementById('incomeCategory');
+      const activeIncList = state.currentIncomeType === 'Income' ? state.categories.income : state.categories.expense;
+      incSelect.innerHTML = activeIncList.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      // Calories / Exercise category rewrite
+      const calSelect = document.getElementById('calCategory');
+      const activeCalList = state.currentCalorieType === 'Food consumed' ? state.categories.food : state.categories.exercise;
+      calSelect.innerHTML = activeCalList.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function setCashFlowPeriod(period) {
+      state.cashFlowPeriod = period;
+      const btnAll = document.getElementById('btnPeriodAll');
+      const btnMon = document.getElementById('btnPeriodMonthly');
+      const btnDay = document.getElementById('btnPeriodDaily');
+
+      const activeClass = 'px-2.5 py-1 rounded-lg font-bold bg-white text-slate-900 shadow-2xs';
+      const inactiveClass = 'px-2.5 py-1 rounded-lg font-medium text-slate-500 hover:text-slate-800';
+
+      if (btnAll) btnAll.className = period === 'all' ? activeClass : inactiveClass;
+      if (btnMon) btnMon.className = period === 'monthly' ? activeClass : inactiveClass;
+      if (btnDay) btnDay.className = period === 'daily' ? activeClass : inactiveClass;
+
+      renderKPIs();
+    }
+
+    function updateTargetCalories(val) {
+      updateMaxCalories(val);
+      const targetInput = document.getElementById('kpiTargetCalorieInput');
+      if (targetInput) targetInput.value = state.maxDailyCalories;
+      const headerInput = document.getElementById('headerMaxCalories');
+      if (headerInput) headerInput.value = state.maxDailyCalories;
+    }
+
+    function adjustTargetCalories(delta) {
+      const nextVal = Math.max(500, Math.min(10000, (state.maxDailyCalories || 2000) + delta));
+      updateTargetCalories(nextVal);
+    }
+
+    function renderKPIs() {
+      // 1. Net cash flow based on period
+      const todayStr = new Date().toISOString().split('T')[0];
+      const monthStr = todayStr.substring(0, 7);
+
+      let filteredLogs = state.incomeLogs;
+      let periodLabel = 'All-time';
+      let incLabel = 'Total Income';
+      let expLabel = 'Total Expenses';
+
+      if (state.cashFlowPeriod === 'monthly') {
+        filteredLogs = state.incomeLogs.filter(l => l.date && l.date.substring(0, 7) === monthStr);
+        const now = new Date();
+        const mName = now.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+        periodLabel = `This Month (${mName})`;
+        incLabel = 'Monthly Income';
+        expLabel = 'Monthly Expenses';
+      } else if (state.cashFlowPeriod === 'daily') {
+        filteredLogs = state.incomeLogs.filter(l => l.date && l.date.substring(0, 10) === todayStr);
+        const now = new Date();
+        const dName = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        periodLabel = `Today (${dName})`;
+        incLabel = 'Daily Income';
+        expLabel = 'Daily Expenses';
+      }
+
+      const totalIncome = filteredLogs.filter(l => l.type === 'Income').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      const totalExpense = filteredLogs.filter(l => l.type === 'Expense').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      const netCash = totalIncome - totalExpense;
+
+      const cashElem = document.getElementById('kpiNetCashFlow');
+      cashElem.innerText = (netCash >= 0 ? '+' : '-') + '$' + Math.abs(netCash).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      cashElem.className = `text-3xl sm:text-4xl font-extrabold font-mono ${netCash >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+
+      const periodLabelElem = document.getElementById('kpiCashFlowPeriodLabel');
+      if (periodLabelElem) periodLabelElem.innerText = periodLabel;
+
+      const incLabelElem = document.getElementById('kpiIncomeLabel');
+      if (incLabelElem) incLabelElem.innerText = incLabel;
+
+      const expLabelElem = document.getElementById('kpiExpenseLabel');
+      if (expLabelElem) expLabelElem.innerText = expLabel;
+
+      document.getElementById('kpiTotalIncome').innerText = '+$' + totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 });
+      document.getElementById('kpiTotalExpenses').innerText = '-$' + totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+      // 2. Net calories today
+      const todayCalLogs = state.calorieLogs.filter(l => l.date && l.date.substring(0, 10) === todayStr);
+      const foodToday = todayCalLogs.filter(l => l.type === 'Food consumed').reduce((s, i) => s + (Number(i.kcal) || 0), 0);
+      const exerciseToday = todayCalLogs.filter(l => l.type === 'Exercise').reduce((s, i) => s + (Number(i.kcal) || 0), 0);
+      const netToday = foodToday - exerciseToday;
+
+      document.getElementById('kpiNetCaloriesToday').innerText = netToday.toLocaleString();
+      document.getElementById('kpiMaxCalorieTarget').innerText = `/ ${state.maxDailyCalories.toLocaleString()} kcal`;
+      const targetInput = document.getElementById('kpiTargetCalorieInput');
+      if (targetInput && document.activeElement !== targetInput) {
+        targetInput.value = state.maxDailyCalories;
+      }
+
+      document.getElementById('kpiTodayFood').innerText = `+${foodToday} kcal`;
+      document.getElementById('kpiTodayExercise').innerText = `-${exerciseToday} kcal`;
+
+      const isOver = netToday > state.maxDailyCalories;
+      const overBadge = document.getElementById('kpiOverCalorieBadge');
+      const calorieCard = document.getElementById('calorieKpiCard');
+
+      if (isOver) {
+        overBadge.classList.remove('hidden');
+        calorieCard.className = 'bg-white rounded-2xl border border-rose-300 ring-1 ring-rose-300/50 p-5 shadow-xs transition flex flex-col justify-between';
+      } else {
+        overBadge.classList.add('hidden');
+        calorieCard.className = 'bg-white rounded-2xl border border-slate-200 p-5 shadow-xs transition flex flex-col justify-between';
+      }
+
+      const pct = Math.min(100, Math.max(0, Math.round((netToday / (state.maxDailyCalories || 2000)) * 100)));
+      const bar = document.getElementById('kpiCalorieBar');
+      bar.style.width = pct + '%';
+      bar.className = `h-full rounded-full transition-all duration-500 ${isOver ? 'bg-rose-500' : pct > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`;
+
+      const pctBadge = document.getElementById('kpiCaloriePercentBadge');
+      if (pctBadge) {
+        pctBadge.innerText = `${pct}%`;
+        pctBadge.className = `text-[11px] font-bold px-1.5 py-0.5 rounded-md ${pct > 100 ? 'bg-rose-50 text-rose-700' : pct > 80 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`;
+      }
+    }
+
+    function renderFinancialTable() {
+      const container = document.getElementById('financialTableContainer');
+      if (!container) return;
+
+      const monthly = {};
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonthIdx = now.getMonth();
+      const currentKey = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
+
+      // Ensure last 4 consecutive months exist
+      for (let i = 3; i >= 0; i--) {
+        const d = new Date(currentYear, currentMonthIdx - i, 1);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthly[k] = { inc: 0, exp: 0 };
+      }
+
+      state.incomeLogs.forEach(l => {
+        if (!l.date) return;
+        const m = l.date.substring(0, 7);
+        if (!monthly[m]) monthly[m] = { inc: 0, exp: 0 };
+        const amt = Number(l.amount) || 0;
+        if (l.type === 'Income') monthly[m].inc += amt;
+        else monthly[m].exp += amt;
+      });
+
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+      const months = Object.keys(monthly).sort().slice(-4);
+
+      const formatCurrency = (amt, prefix = '') => `${prefix}$${Number(amt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const cols = months.map(m => {
+        const [yStr, mmStr] = m.split('-');
+        const y = parseInt(yStr, 10);
+        const mm = parseInt(mmStr, 10) - 1;
+        const yr2 = String(y).slice(-2);
+        const mName = monthNames[mm] || 'Jan';
+        const formatted = `${yr2} ${mName}`;
+        const inc = monthly[m].inc;
+        const exp = monthly[m].exp;
+        const net = inc - exp;
+        const isCurrent = m === currentKey;
+        return { formatted, inc, exp, net, isCurrent };
+      });
+
+      const html = `
+        <table class="w-full text-left border-collapse text-xs h-full">
+          <tbody>
+            <!-- Row 1: Month (e.g. 26 Sept) -->
+            <tr class="border-b border-slate-200/80 bg-white/80">
+              <td class="py-2.5 px-3 font-extrabold uppercase text-[10px] tracking-wider text-slate-600 bg-slate-100/60 w-36 border-r border-slate-200/60">
+                Month
+              </td>
+              ${cols.map(c => `
+                <td class="py-2.5 px-2.5 text-center whitespace-nowrap border-r border-slate-100 last:border-r-0">
+                  <div class="inline-flex flex-col items-center">
+                    <span class="font-extrabold font-mono text-xs text-slate-900">${c.formatted}</span>
+                    ${c.isCurrent ? '<span class="text-[9px] font-bold px-1.5 text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200 mt-0.5">Current</span>' : ''}
+                  </div>
+                </td>
+              `).join('')}
+            </tr>
+
+            <!-- Row 2: Monthly Income -->
+            <tr class="border-b border-slate-200/60 bg-white">
+              <td class="py-2.5 px-3 font-bold text-slate-800 bg-slate-50/60 border-r border-slate-200/60">
+                Monthly Income
+              </td>
+              ${cols.map(c => `
+                <td class="py-2.5 px-2.5 text-center whitespace-nowrap font-mono font-extrabold text-emerald-600 text-xs border-r border-slate-100 last:border-r-0">
+                  ${formatCurrency(c.inc, '+')}
+                </td>
+              `).join('')}
+            </tr>
+
+            <!-- Row 3: Monthly Expense -->
+            <tr class="border-b border-slate-200/60 bg-white">
+              <td class="py-2.5 px-3 font-bold text-slate-800 bg-slate-50/60 border-r border-slate-200/60">
+                Monthly Expense
+              </td>
+              ${cols.map(c => `
+                <td class="py-2.5 px-2.5 text-center whitespace-nowrap font-mono font-extrabold text-rose-600 text-xs border-r border-slate-100 last:border-r-0">
+                  ${formatCurrency(c.exp, '-')}
+                </td>
+              `).join('')}
+            </tr>
+
+            <!-- Row 4: Net Cash -->
+            <tr class="bg-slate-50/70">
+              <td class="py-2.5 px-3 font-extrabold text-slate-900 bg-slate-100/70 border-r border-slate-200/60">
+                Net Cash
+              </td>
+              ${cols.map(c => {
+                const isPos = c.net >= 0;
+                return `
+                  <td class="py-2.5 px-2.5 text-center whitespace-nowrap border-r border-slate-100 last:border-r-0">
+                    <span class="inline-block px-2 py-0.5 rounded-md font-mono font-black text-xs ${isPos ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                      ${formatCurrency(Math.abs(c.net), isPos ? '+' : '-')}
+                    </span>
+                  </td>
+                `;
+              }).join('')}
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function initFinancialChart() {
+      renderFinancialTable();
+    }
+
+    function initCalorieChart() {
+      const ctx = document.getElementById('calorieChartCanvas');
+      if (!ctx) return;
+
+      const daily = {};
+      const today = new Date();
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        daily[d.toISOString().split('T')[0]] = { food: 0, exer: 0 };
+      }
+
+      state.calorieLogs.forEach(l => {
+        if (!l.date) return;
+        const dk = l.date.substring(0, 10);
+        if (!daily[dk]) daily[dk] = { food: 0, exer: 0 };
+        const k = Number(l.kcal) || 0;
+        if (l.type === 'Food consumed') daily[dk].food += k;
+        else daily[dk].exer += k;
+      });
+
+      const days = Object.keys(daily).sort().slice(-14);
+      const labels = days.map(d => {
+        const parts = d.split('-');
+        return `${parts[1]}/${parts[2]}`;
+      });
+
+      const netData = days.map(d => daily[d].food - daily[d].exer);
+      const threshold = days.map(() => state.maxDailyCalories);
+
+      if (calorieChartInstance) calorieChartInstance.destroy();
+
+      calorieChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Daily Net (Food - Exercise)',
+              data: netData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              fill: true,
+              tension: 0.35
+            },
+            {
+              label: `Max Cap (${state.maxDailyCalories})`,
+              data: threshold,
+              borderColor: '#f43f5e',
+              borderDash: [5, 5],
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        }
+      });
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      const title = document.getElementById('calendarMonthTitle');
+      const d = state.calendarDate;
+      const y = d.getFullYear();
+      const m = d.getMonth();
+
+      title.innerText = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+      const firstDay = new Date(y, m, 1).getDay();
+      const numDays = new Date(y, m + 1, 0).getDate();
+
+      const dailyCal = {};
+      state.calorieLogs.forEach(l => {
+        if (!l.date) return;
+        const dk = l.date.substring(0, 10);
+        if (!dailyCal[dk]) dailyCal[dk] = { food: 0, exer: 0 };
+        const k = Number(l.kcal) || 0;
+        if (l.type === 'Food consumed') dailyCal[dk].food += k;
+        else dailyCal[dk].exer += k;
+      });
+
+      let html = '';
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="min-h-[70px] bg-slate-50/50 rounded-xl border border-slate-100 opacity-30"></div>';
+      }
+
+      for (let day = 1; day <= numDays; day++) {
+        const fDay = day < 10 ? `0${day}` : `${day}`;
+        const fMonth = (m + 1) < 10 ? `0${m + 1}` : `${m + 1}`;
+        const dateKey = `${y}-${fMonth}-${fDay}`;
+
+        const entry = dailyCal[dateKey];
+        const net = entry ? entry.food - entry.exer : 0;
+        const hasData = entry && (entry.food > 0 || entry.exer > 0);
+        const isOver = hasData && net > state.maxDailyCalories;
+
+        // Requirement: soft red hue (bg-red-100) and prepend warning symbol (⚠️)
+        const bgClass = isOver ? 'bg-red-100 border-red-300 text-rose-900' : hasData ? 'bg-emerald-50/60 border-emerald-200' : 'bg-white border-slate-200';
+
+        html += `
+          <div class="min-h-[70px] p-2 rounded-xl border ${bgClass} flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold">${day}</span>
+              ${isOver ? '<span class="text-xs">⚠️</span>' : ''}
+            </div>
+            ${hasData ? `
+              <div class="text-[11px] font-mono font-bold">
+                ${isOver ? '⚠️ ' : ''}${net > 0 ? '+' + net : net} <span class="text-[9px] font-normal">kcal</span>
+              </div>
+            ` : '<div class="text-[10px] text-slate-300">--</div>'}
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function calPrevMonth() {
+      state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function calNextMonth() {
+      state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    // Submit Income
+    async function submitIncome(e) {
+      e.preventDefault();
+      const date = document.getElementById('incomeDate').value;
+      const cat = document.getElementById('incomeCategory').value;
+      const amt = parseFloat(document.getElementById('incomeAmount').value);
+      const note = document.getElementById('incomeNote').value;
+      const btn = document.getElementById('incomeSubmitBtn');
+
+      btn.disabled = true;
+      btn.innerText = 'Syncing with Cloud Matrix...';
+
+      const entry = {
+        id: 'inc_' + Date.now(),
+        date,
+        type: state.currentIncomeType,
+        category: cat,
+        amount: amt,
+        note
+      };
+
+      try {
+        if (state.scriptUrl && state.sheetId) {
+          await fetch(state.scriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              sheetId: state.sheetId,
+              targetTab: 'Income',
+              data: [date, state.currentIncomeType, cat, amt, note]
+            }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+          });
+        }
+        state.incomeLogs.push(entry);
+        localStorage.setItem('lifesync_income_logs', JSON.stringify(state.incomeLogs));
+        document.getElementById('incomeAmount').value = '';
+        document.getElementById('incomeNote').value = '';
+        renderKPIs();
+        initFinancialChart();
+      } catch (err) {
+        alert('Sync error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = state.currentIncomeType === 'Income' ? 'Record Income' : 'Record Expense';
+      }
+    }
+
+    // Submit Calories
+    async function submitCalories(e) {
+      e.preventDefault();
+      const date = document.getElementById('calDate').value;
+      const cat = document.getElementById('calCategory').value;
+      const kcal = parseInt(document.getElementById('calKcal').value, 10);
+      const note = document.getElementById('calNote').value;
+      const btn = document.getElementById('calorieSubmitBtn');
+
+      btn.disabled = true;
+      btn.innerText = 'Syncing with Cloud Matrix...';
+
+      const entry = {
+        id: 'cal_' + Date.now(),
+        date,
+        type: state.currentCalorieType,
+        category: cat,
+        kcal,
+        note
+      };
+
+      try {
+        if (state.scriptUrl && state.sheetId) {
+          await fetch(state.scriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+              sheetId: state.sheetId,
+              targetTab: 'Calories',
+              data: [date, state.currentCalorieType, cat, kcal, note]
+            }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+          });
+        }
+        state.calorieLogs.push(entry);
+        localStorage.setItem('lifesync_calorie_logs', JSON.stringify(state.calorieLogs));
+        document.getElementById('calKcal').value = '';
+        document.getElementById('calNote').value = '';
+        renderKPIs();
+        initCalorieChart();
+        renderCalendar();
+      } catch (err) {
+        alert('Sync error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = state.currentCalorieType === 'Food consumed' ? 'Log Intake (+kcal)' : 'Log Burn (-kcal)';
+      }
+    }
+
+    // Sync from Sheet
+    async function syncData() {
+      if (!state.scriptUrl || !state.sheetId) return;
+      const syncBtn = document.getElementById('syncButton');
+      const syncIcon = document.getElementById('syncIcon');
+      const syncText = document.getElementById('syncText');
+
+      syncBtn.disabled = true;
+      syncText.innerText = 'Syncing...';
+
+      try {
+        const url = new URL(state.scriptUrl);
+        url.searchParams.set('action', 'fetchData');
+        url.searchParams.set('sheetId', state.sheetId);
+
+        const res = await fetch(url.toString());
+        const data = await res.json();
+        if (data.status === 'success') {
+          if (data.incomeLogs) state.incomeLogs = data.incomeLogs;
+          if (data.calorieLogs) state.calorieLogs = data.calorieLogs;
+          if (data.settings) {
+            if (data.settings.incomeCategories) state.categories.income = data.settings.incomeCategories;
+            if (data.settings.expenseCategories) state.categories.expense = data.settings.expenseCategories;
+            if (data.settings.foodCategories) state.categories.food = data.settings.foodCategories;
+            if (data.settings.exerciseCategories) state.categories.exercise = data.settings.exerciseCategories;
+          }
+          localStorage.setItem('lifesync_income_logs', JSON.stringify(state.incomeLogs));
+          localStorage.setItem('lifesync_calorie_logs', JSON.stringify(state.calorieLogs));
+          updateCategoryDropdowns();
+          renderKPIs();
+          initFinancialChart();
+          initCalorieChart();
+          renderCalendar();
+        }
+      } catch (e) {
+        console.warn('Sync failed:', e);
+      } finally {
+        syncBtn.disabled = false;
+        syncText.innerText = 'Sync Sheet';
+      }
+    }
+
+    function openSetupModal() {
+      document.getElementById('modalScriptUrl').value = state.scriptUrl;
+      document.getElementById('modalClientId').value = state.clientId;
+      document.getElementById('modalSheetId').value = state.sheetId;
+      document.getElementById('setupModal').classList.remove('hidden');
+    }
+
+    function closeSetupModal() {
+      document.getElementById('setupModal').classList.add('hidden');
+    }
+
+    function saveManualSheetId() {
+      const url = document.getElementById('modalScriptUrl').value.trim();
+      const sId = document.getElementById('modalSheetId').value.trim();
+      if (!sId) return;
+
+      state.scriptUrl = url;
+      state.sheetId = sId;
+      localStorage.setItem('lifesync_script_url', url);
+      localStorage.setItem('lifesync_sheet_id', sId);
+      updateSheetLink();
+      closeSetupModal();
+      syncData();
+    }
+
+    function connectGoogleAccount() {
+      const scriptUrl = document.getElementById('modalScriptUrl').value.trim();
+      const clientId = document.getElementById('modalClientId').value.trim();
+      const notice = document.getElementById('modalNotice');
+
+      if (!scriptUrl) {
+        notice.innerText = 'Please paste your Google Apps Script Web App URL first.';
+        notice.className = 'p-3 rounded-xl text-xs bg-rose-50 text-rose-700 block';
+        return;
+      }
+      if (!clientId) {
+        notice.innerText = 'Please enter your Google OAuth Client ID to authenticate via GIS.';
+        notice.className = 'p-3 rounded-xl text-xs bg-amber-50 text-amber-700 block';
+        return;
+      }
+
+      if (!window.google?.accounts?.oauth2) {
+        notice.innerText = 'Google Identity Services is loading. Please retry in a moment.';
+        notice.className = 'p-3 rounded-xl text-xs bg-rose-50 text-rose-700 block';
+        return;
+      }
+
+      const btn = document.getElementById('btnModalConnectGoogle');
+      btn.disabled = true;
+      btn.innerText = 'Authenticating with Google...';
+
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile',
+        callback: async (resp) => {
+          if (resp.access_token) {
+            btn.innerText = 'Provisioning Sheet via Apps Script...';
+            try {
+              const url = new URL(scriptUrl);
+              url.searchParams.set('action', 'initializeSheet');
+              url.searchParams.set('accessToken', resp.access_token);
+
+              const res = await fetch(url.toString());
+              const data = await res.json();
+              if (data.status === 'success' && data.sheetId) {
+                state.scriptUrl = scriptUrl;
+                state.sheetId = data.sheetId;
+                state.clientId = clientId;
+                localStorage.setItem('lifesync_script_url', scriptUrl);
+                localStorage.setItem('lifesync_sheet_id', data.sheetId);
+                localStorage.setItem('lifesync_client_id', clientId);
+                updateSheetLink();
+                closeSetupModal();
+                syncData();
+              } else {
+                throw new Error(data.message || 'Initialization failed');
+              }
+            } catch (err) {
+              notice.innerText = 'Error: ' + err.message;
+              notice.className = 'p-3 rounded-xl text-xs bg-rose-50 text-rose-700 block';
+            } finally {
+              btn.disabled = false;
+              btn.innerText = '🚀 Connect Google Account & Create Sheet';
+            }
+          }
+        }
+      });
+
+      tokenClient.requestAccessToken();
+    }
+  </script>
+</body>
+</html>

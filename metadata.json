@@ -1,0 +1,6 @@
+{
+  "name": "LifeSync Dashboard",
+  "description": "Personal dashboard tracking Calories Intake, Exercise, and Income/Expenses with bi-directional Google Sheets sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
