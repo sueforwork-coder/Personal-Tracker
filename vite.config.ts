@@ -4,8 +4,18 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  let base = './';
+  if (process.env.VITE_BASE_PATH) {
+    base = process.env.VITE_BASE_PATH.endsWith('/') ? process.env.VITE_BASE_PATH : `${process.env.VITE_BASE_PATH}/`;
+  } else if (process.env.GITHUB_REPOSITORY) {
+    const repoName = process.env.GITHUB_REPOSITORY.split('/')[1];
+    if (repoName) {
+      base = `/${repoName}/`;
+    }
+  }
+
   return {
-    base: "/Personal-Tracker/",
+    base,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
