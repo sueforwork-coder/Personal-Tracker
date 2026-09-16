@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, RefreshCw, Settings, Code, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ExternalLink, RefreshCw, Settings, Code, Sparkles, CheckCircle2, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { AppConfig, SyncStatus } from '../types';
 
 interface HeaderProps {
@@ -8,6 +8,7 @@ interface HeaderProps {
   onOpenSettings: () => void;
   onOpenGuide: () => void;
   onSync: () => void;
+  onExportExcel: () => void;
   syncStatus: SyncStatus;
   lastSyncedText: string;
 }
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   onOpenGuide,
   onSync,
+  onExportExcel,
   syncStatus,
   lastSyncedText,
 }) => {
@@ -55,6 +57,15 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Mobile quick actions */}
             <div className="flex md:hidden items-center gap-1.5">
+              <button
+                type="button"
+                id="btn-mobile-export-excel"
+                onClick={onExportExcel}
+                className="p-2 rounded-lg text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 transition"
+                title="Export Data to Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+              </button>
               <button
                 type="button"
                 id="btn-mobile-sync"
@@ -124,6 +135,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>No Sheet Linked</span>
               </button>
             )}
+
+            {/* Export to Excel Button */}
+            <button
+              type="button"
+              id="btn-header-export-excel"
+              onClick={onExportExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 active:scale-98 transition shadow-xs"
+              title="Export all records to Excel spreadsheet (.xlsx)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export Excel</span>
+            </button>
 
             {/* Manual Sync Button */}
             <button

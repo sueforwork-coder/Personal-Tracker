@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { ListFilter, Search, ArrowUpRight, ArrowDownRight, Utensils, Activity } from 'lucide-react';
+import { ListFilter, Search, ArrowUpRight, ArrowDownRight, Utensils, Activity, FileSpreadsheet } from 'lucide-react';
 import { CalorieLog, IncomeLog } from '../types';
 
 interface RecentLogsProps {
   incomeLogs: IncomeLog[];
   calorieLogs: CalorieLog[];
+  onExportExcel?: () => void;
 }
 
-export const RecentLogs: React.FC<RecentLogsProps> = ({ incomeLogs, calorieLogs }) => {
+export const RecentLogs: React.FC<RecentLogsProps> = ({ incomeLogs, calorieLogs, onExportExcel }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'finance' | 'calories'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -133,6 +134,19 @@ export const RecentLogs: React.FC<RecentLogsProps> = ({ incomeLogs, calorieLogs 
               Calories
             </button>
           </div>
+
+          {onExportExcel && (
+            <button
+              type="button"
+              id="btn-recent-logs-export-excel"
+              onClick={onExportExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 transition"
+              title="Download records as Excel spreadsheet"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Export Excel</span>
+            </button>
+          )}
         </div>
       </div>
 

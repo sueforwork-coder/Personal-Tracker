@@ -9,6 +9,8 @@ import { ThresholdCalendar } from './components/ThresholdCalendar';
 import { RecentLogs } from './components/RecentLogs';
 import { SetupModal } from './components/SetupModal';
 import { AppsScriptGuideModal } from './components/AppsScriptGuideModal';
+import { exportTrackerDataToExcel } from './utils/excelExport';
+import { FileSpreadsheet } from 'lucide-react';
 import {
   AppConfig,
   CalorieLog,
@@ -297,6 +299,27 @@ export default function App() {
     });
   };
 
+  // Excel (.xlsx) file export handler
+  const handleExportExcel = () => {
+    try {
+      const result = exportTrackerDataToExcel({
+        incomeLogs,
+        calorieLogs,
+        maxDailyCalories: config.maxDailyCalories,
+      });
+      setToastMessage({
+        type: 'success',
+        text: `Exported ${result.rowCount} records to ${result.fileName}!`,
+      });
+    } catch (err: any) {
+      console.error('Excel export failed:', err);
+      setToastMessage({
+        type: 'error',
+        text: `Export failed: ${err.message || 'Unknown error'}`,
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/80 text-slate-900 flex flex-col selection:bg-emerald-100 selection:text-emerald-900 font-['Plus_Jakarta_Sans',sans-serif]">
       
@@ -331,6 +354,7 @@ export default function App() {
         onOpenSettings={() => setIsSetupModalOpen(true)}
         onOpenGuide={() => setIsGuideModalOpen(true)}
         onSync={() => handleSyncData()}
+        onExportExcel={handleExportExcel}
         syncStatus={syncStatus}
         lastSyncedText={lastSyncedText}
       />
@@ -379,6 +403,7 @@ export default function App() {
         <RecentLogs
           incomeLogs={incomeLogs}
           calorieLogs={calorieLogs}
+          onExportExcel={handleExportExcel}
         />
 
       </main>
@@ -391,7 +416,17 @@ export default function App() {
             <span>&bull;</span>
             <span>Google Sheets Bi-directional Sync</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              id="btn-footer-export-excel"
+              onClick={handleExportExcel}
+              className="text-emerald-600 hover:text-emerald-800 font-semibold hover:underline inline-flex items-center gap-1.5"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Export to Excel (.xlsx)
+            </button>
+            <span>&bull;</span>
             <button
               type="button"
               onClick={() => setIsGuideModalOpen(true)}
